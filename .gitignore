@@ -1,0 +1,32 @@
+# Dependências
+node_modules/
+
+# Variáveis de ambiente
+.env
+.env.local
+.env.production
+
+# Banco local
+database/database.json
+
+# Logs
+logs/
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Arquivos temporários
+*.tmp
+*.cache
+
+# Railway
+.railway/
+
+# npm
+npm-debug.log*
+package-lock.old.json
