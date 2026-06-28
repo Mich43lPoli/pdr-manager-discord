@@ -73,10 +73,8 @@ module.exports = {
     .setDescription('Abre o painel principal do PDR Manager'),
 
   async execute(interaction) {
-    console.log('✅ COMANDO /PAINEL FOI EXECUTADO');
-
-    await interaction.reply({
-      content: '✅ Teste do painel funcionando',
+    return await interaction.reply({
+      ...criarPainelPrincipal(),
       ephemeral: false
     });
   }
