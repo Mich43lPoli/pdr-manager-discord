@@ -1,5 +1,6 @@
 function isOwner(interaction) {
-  return interaction.user.id === '704404734672371763';
+  const ownerId = process.env.OWNER_ID || '704404734672371763';
+  return interaction.user.id === ownerId;
 }
 
 module.exports = {

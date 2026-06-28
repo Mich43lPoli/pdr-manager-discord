@@ -3,7 +3,9 @@ const {
   TextInputBuilder,
   TextInputStyle,
   ActionRowBuilder,
-  EmbedBuilder
+  EmbedBuilder,
+  UserSelectMenuBuilder,
+  StringSelectMenuBuilder
 } = require('discord.js');
 
 const { criarPainelPrincipal } = require('../commands/sistema/painel');
@@ -14,20 +16,92 @@ const { painelSistema } = require('../ui/panels/painelSistema');
 
 const {
   cadastrarTecnico,
+  atualizarCanalTecnico,
   listarTecnicos
 } = require('../services/tecnicos/tecnicoService');
 
+const { criarCanalTecnico } = require('../services/tecnicos/canalTecnicoService');
 const { isOwner } = require('../utils/permissoes');
 
-function limparDiscordId(valor) {
-  return valor.replace(/[<@!>]/g, '').trim();
-}
+const cadastroTemporario = new Map();
 
 function negarAcesso(interaction) {
   return interaction.reply({
     content: '❌ Você não tem permissão para usar esta função.',
     ephemeral: true
   });
+}
+
+function criarPainelCadastroTecnico(interaction, dados = {}) {
+  const usuarioTexto = dados.usuarioId ? `<@${dados.usuarioId}>` : 'Não selecionado';
+  const cargoTexto = dados.cargo || 'Não selecionado';
+
+  const embed = new EmbedBuilder()
+    .setColor(0xff0000)
+    .setTitle('➕ Cadastrar Técnico')
+    .setDescription(
+      [
+        'Selecione o usuário e o cargo do técnico.',
+        '',
+        `👤 **Usuário:** ${usuarioTexto}`,
+        `🔐 **Cargo:** ${cargoTexto}`,
+        '',
+        'Depois clique em **Continuar** para informar o telefone.'
+      ].join('\n')
+    );
+
+  const rowUsuario = new ActionRowBuilder().addComponents(
+    new UserSelectMenuBuilder()
+      .setCustomId('tecnico_select_usuario')
+      .setPlaceholder('Selecione o usuário do Discord')
+      .setMinValues(1)
+      .setMaxValues(1)
+  );
+
+  const rowCargo = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('tecnico_select_cargo')
+      .setPlaceholder('Selecione o cargo')
+      .addOptions(
+        {
+          label: 'Administrador',
+          description: 'Acesso total ao sistema',
+          value: 'Administrador',
+          emoji: '👑'
+        },
+        {
+          label: 'Técnico',
+          description: 'Acesso apenas ao próprio canal e tarefas',
+          value: 'Técnico',
+          emoji: '👨‍🔧'
+        },
+        {
+          label: 'Visualizador',
+          description: 'Acesso somente para leitura',
+          value: 'Visualizador',
+          emoji: '👁️'
+        }
+      )
+  );
+
+  const rowBotoes = new ActionRowBuilder().addComponents(
+    new (require('discord.js').ButtonBuilder)()
+      .setCustomId('tecnico_cadastro_continuar')
+      .setLabel('Continuar')
+      .setEmoji('➡️')
+      .setStyle(require('discord.js').ButtonStyle.Success),
+
+    new (require('discord.js').ButtonBuilder)()
+      .setCustomId('painel_tecnicos')
+      .setLabel('Cancelar')
+      .setEmoji('❌')
+      .setStyle(require('discord.js').ButtonStyle.Secondary)
+  );
+
+  return {
+    embeds: [embed],
+    components: [rowUsuario, rowCargo, rowBotoes]
+  };
 }
 
 module.exports = {
@@ -75,43 +149,48 @@ module.exports = {
         if (id === 'tecnico_cadastrar') {
           if (!isOwner(interaction)) return await negarAcesso(interaction);
 
+          cadastroTemporario.set(interaction.user.id, {});
+
+          return await interaction.update(
+            criarPainelCadastroTecnico(interaction, {})
+          );
+        }
+
+        if (id === 'tecnico_cadastro_continuar') {
+          if (!isOwner(interaction)) return await negarAcesso(interaction);
+
+          const dados = cadastroTemporario.get(interaction.user.id);
+
+          if (!dados || !dados.usuarioId || !dados.cargo) {
+            return await interaction.reply({
+              content: '❌ Selecione o usuário e o cargo antes de continuar.',
+              ephemeral: true
+            });
+          }
+
           const modal = new ModalBuilder()
-            .setCustomId('modal_cadastrar_tecnico')
-            .setTitle('Cadastrar Técnico');
-
-          const nome = new TextInputBuilder()
-            .setCustomId('nome')
-            .setLabel('Nome completo')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
-          const discordId = new TextInputBuilder()
-            .setCustomId('discordId')
-            .setLabel('Mencione o técnico ou cole o ID')
-            .setPlaceholder('@usuario ou 123456789')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
+            .setCustomId('modal_cadastrar_tecnico_telefone')
+            .setTitle('Telefone do Técnico');
 
           const telefone = new TextInputBuilder()
             .setCustomId('telefone')
             .setLabel('Telefone')
+            .setPlaceholder('Ex: +49 000 000000')
             .setStyle(TextInputStyle.Short)
             .setRequired(false);
 
-          const cargo = new TextInputBuilder()
-            .setCustomId('cargo')
-            .setLabel('Administrador, Técnico ou Visualizador')
-            .setStyle(TextInputStyle.Short)
-            .setRequired(true);
-
           modal.addComponents(
-            new ActionRowBuilder().addComponents(nome),
-            new ActionRowBuilder().addComponents(discordId),
-            new ActionRowBuilder().addComponents(telefone),
-            new ActionRowBuilder().addComponents(cargo)
+            new ActionRowBuilder().addComponents(telefone)
           );
 
           return await interaction.showModal(modal);
+        }
+
+        if (id === 'tecnico_gerenciar') {
+          return await interaction.reply({
+            content: '👥 Gerenciamento de técnicos será a próxima etapa.',
+            ephemeral: true
+          });
         }
 
         if (id === 'tecnico_listar') {
@@ -129,13 +208,15 @@ module.exports = {
           const lista = tecnicos
             .map((tecnico) => {
               const status = tecnico.ativo ? '🟢 Ativo' : '🔴 Inativo';
+              const canal = tecnico.canalId ? `<#${tecnico.canalId}>` : 'Não criado';
 
               return [
                 `**${tecnico.id}**`,
                 `👤 ${tecnico.nome}`,
-                `🆔 Discord ID: ${tecnico.discordId || 'Não informado'}`,
+                `💬 Discord: <@${tecnico.discordId}>`,
                 `📞 ${tecnico.telefone || 'Não informado'}`,
                 `🔐 Cargo: ${tecnico.cargo || 'Não informado'}`,
+                `📁 Canal: ${canal}`,
                 `${status}`
               ].join('\n');
             })
@@ -159,59 +240,98 @@ module.exports = {
         });
       }
 
-      if (interaction.isModalSubmit()) {
-        if (interaction.customId === 'modal_cadastrar_tecnico') {
+      if (interaction.isUserSelectMenu()) {
+        if (interaction.customId === 'tecnico_select_usuario') {
           if (!isOwner(interaction)) return await negarAcesso(interaction);
 
-          const nome = interaction.fields.getTextInputValue('nome');
-          const discordIdBruto = interaction.fields.getTextInputValue('discordId');
-          const discordId = limparDiscordId(discordIdBruto);
-          const telefone = interaction.fields.getTextInputValue('telefone') || 'Não informado';
-          const cargo = interaction.fields.getTextInputValue('cargo');
+          const usuarioId = interaction.values[0];
+          const usuario = await client.users.fetch(usuarioId);
 
-          const cargoNormalizado = cargo.trim().toLowerCase();
-          const cargosPermitidos = ['administrador', 'admin', 'adm', 'tecnico', 'técnico', 'visualizador'];
+          const dados = cadastroTemporario.get(interaction.user.id) || {};
+          dados.usuarioId = usuario.id;
+          dados.username = usuario.username;
+          dados.nome = usuario.globalName || usuario.username;
 
-          if (!cargosPermitidos.includes(cargoNormalizado)) {
-            return await interaction.reply({
-              content: '❌ Cargo inválido. Use: Administrador, Técnico ou Visualizador.',
-              ephemeral: true
+          cadastroTemporario.set(interaction.user.id, dados);
+
+          return await interaction.update(
+            criarPainelCadastroTecnico(interaction, dados)
+          );
+        }
+      }
+
+      if (interaction.isStringSelectMenu()) {
+        if (interaction.customId === 'tecnico_select_cargo') {
+          if (!isOwner(interaction)) return await negarAcesso(interaction);
+
+          const cargo = interaction.values[0];
+
+          const dados = cadastroTemporario.get(interaction.user.id) || {};
+          dados.cargo = cargo;
+
+          cadastroTemporario.set(interaction.user.id, dados);
+
+          return await interaction.update(
+            criarPainelCadastroTecnico(interaction, dados)
+          );
+        }
+      }
+
+      if (interaction.isModalSubmit()) {
+        if (interaction.customId === 'modal_cadastrar_tecnico_telefone') {
+          if (!isOwner(interaction)) return await negarAcesso(interaction);
+
+          await interaction.deferReply({ ephemeral: true });
+
+          const dados = cadastroTemporario.get(interaction.user.id);
+
+          if (!dados || !dados.usuarioId || !dados.cargo) {
+            return await interaction.editReply({
+              content: '❌ Cadastro incompleto. Comece novamente.'
             });
           }
 
-          const cargoFinal =
-            ['administrador', 'admin', 'adm'].includes(cargoNormalizado)
-              ? 'Administrador'
-              : cargoNormalizado === 'visualizador'
-                ? 'Visualizador'
-                : 'Técnico';
+          const telefone = interaction.fields.getTextInputValue('telefone') || 'Não informado';
 
-          const tecnico = cadastrarTecnico({
-            nome,
-            discordId,
+          const resultado = cadastrarTecnico({
+            nome: dados.nome,
+            discordId: dados.usuarioId,
+            discordUsername: dados.username,
             telefone,
-            cargo: cargoFinal
+            cargo: dados.cargo
           });
+
+          if (resultado.existente) {
+            cadastroTemporario.delete(interaction.user.id);
+
+            return await interaction.editReply({
+              content: `⚠️ Este técnico já está cadastrado: <@${resultado.tecnico.discordId}>`
+            });
+          }
+
+          const canal = await criarCanalTecnico(interaction, resultado.tecnico);
+          const tecnicoAtualizado = atualizarCanalTecnico(resultado.tecnico.discordId, canal);
+
+          cadastroTemporario.delete(interaction.user.id);
 
           const embed = new EmbedBuilder()
             .setTitle('✅ Técnico cadastrado')
             .setColor(0x00ff66)
             .setDescription(
               [
-                `**ID:** ${tecnico.id}`,
-                `**Nome:** ${tecnico.nome}`,
-                `**Discord:** <@${tecnico.discordId}>`,
-                `**Discord ID:** ${tecnico.discordId}`,
-                `**Telefone:** ${tecnico.telefone}`,
-                `**Cargo:** ${tecnico.cargo}`,
+                `**ID:** ${tecnicoAtualizado.id}`,
+                `**Nome:** ${tecnicoAtualizado.nome}`,
+                `**Discord:** <@${tecnicoAtualizado.discordId}>`,
+                `**Telefone:** ${tecnicoAtualizado.telefone}`,
+                `**Cargo:** ${tecnicoAtualizado.cargo}`,
+                `**Canal:** <#${tecnicoAtualizado.canalId}>`,
                 '',
-                'O técnico foi salvo no banco de dados.'
+                'Canal privado criado automaticamente.'
               ].join('\n')
             );
 
-          return await interaction.reply({
-            embeds: [embed],
-            ephemeral: true
+          return await interaction.editReply({
+            embeds: [embed]
           });
         }
       }

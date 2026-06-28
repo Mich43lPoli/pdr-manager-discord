@@ -19,6 +19,12 @@ async function painelTecnicos(interaction) {
       .setStyle(ButtonStyle.Success),
 
     new ButtonBuilder()
+      .setCustomId('tecnico_gerenciar')
+      .setLabel('Gerenciar')
+      .setEmoji('👥')
+      .setStyle(ButtonStyle.Secondary),
+
+    new ButtonBuilder()
       .setCustomId('tecnico_listar')
       .setLabel('Listar')
       .setEmoji('📋')
