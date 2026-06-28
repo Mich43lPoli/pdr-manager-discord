@@ -44,10 +44,9 @@ async function painelTecnicos(interaction) {
       .setStyle(ButtonStyle.Danger)
   );
 
-  return await interaction.reply({
+  return await interaction.editReply({
     embeds: [embed],
-    components: [row],
-    ephemeral: true
+    components: [row]
   });
 }
 
