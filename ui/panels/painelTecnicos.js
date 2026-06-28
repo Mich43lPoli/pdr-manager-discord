@@ -5,24 +5,11 @@ const {
   ButtonStyle
 } = require('discord.js');
 
-const { listarTecnicos } = require('../../services/tecnicos/tecnicoService');
-
 async function painelTecnicos(interaction) {
-  const tecnicos = listarTecnicos();
-  const ativos = tecnicos.filter(t => t.ativo).length;
-
   const embed = new EmbedBuilder()
-    .setTitle('👨‍🔧 Módulo de Técnicos')
     .setColor(0xff0000)
-    .setDescription(
-      'Gestão dos técnicos cadastrados no PDR Manager.\n\n' +
-      '━━━━━━━━━━━━━━━━━━━━━━\n\n' +
-      `👨‍🔧 **Técnicos cadastrados:** \`${tecnicos.length}\`\n` +
-      `🟢 **Ativos:** \`${ativos}\`\n\n` +
-      '━━━━━━━━━━━━━━━━━━━━━━\n\n' +
-      'Escolha uma ação abaixo:'
-    )
-    .setFooter({ text: 'PDR Manager • Técnicos' });
+    .setTitle('👨‍🔧 Técnicos')
+    .setDescription('Escolha uma ação para gestão de técnicos.');
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -44,7 +31,7 @@ async function painelTecnicos(interaction) {
       .setStyle(ButtonStyle.Danger)
   );
 
-  return await interaction.editReply({
+  return await interaction.update({
     embeds: [embed],
     components: [row]
   });

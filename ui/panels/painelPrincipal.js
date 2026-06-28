@@ -6,6 +6,7 @@ const {
 } = require('discord.js');
 
 async function painelPrincipal(interaction) {
+
   const agora = new Date().toLocaleString('pt-PT');
 
   const embed = new EmbedBuilder()
@@ -14,20 +15,21 @@ async function painelPrincipal(interaction) {
     .setDescription(
       'Sistema de gestão para Martelinho de Ouro.\n\n' +
       '━━━━━━━━━━━━━━━━━━━━━━\n\n' +
-      '🏢 **Empresa**\n' +
+      '🏢 Empresa\n' +
       'PDR Manager\n\n' +
-      '👨‍🔧 **Técnicos:** `0`\n' +
-      '🚗 **Carros:** `0`\n' +
-      '💰 **Pendentes:** `€0`\n' +
-      '📄 **Relatórios:** `0`\n\n' +
+      '👨‍🔧 Técnicos: `0`\n' +
+      '🚗 Carros: `0`\n' +
+      '💰 Pendentes: `€0`\n' +
+      '📄 Relatórios: `0`\n\n' +
       '━━━━━━━━━━━━━━━━━━━━━━\n\n' +
       'Escolha um módulo abaixo:'
     )
     .setFooter({
-      text: `PDR Manager • Versão 0.2 • Atualizado em ${agora}`
+      text: `PDR Manager • Versão 0.2 • ${agora}`
     });
 
   const row1 = new ActionRowBuilder().addComponents(
+
     new ButtonBuilder()
       .setCustomId('painel_carros')
       .setLabel('Carros')
@@ -45,9 +47,11 @@ async function painelPrincipal(interaction) {
       .setLabel('Financeiro')
       .setEmoji('💰')
       .setStyle(ButtonStyle.Success)
+
   );
 
   const row2 = new ActionRowBuilder().addComponents(
+
     new ButtonBuilder()
       .setCustomId('painel_relatorios')
       .setLabel('Relatórios')
@@ -71,13 +75,16 @@ async function painelPrincipal(interaction) {
       .setLabel('Atualizar')
       .setEmoji('🔄')
       .setStyle(ButtonStyle.Secondary)
+
   );
 
-  return await interaction.reply({
+  return await interaction.update({
     embeds: [embed],
-    components: [row1, row2],
-    ephemeral: true
+    components: [row1, row2]
   });
+
 }
 
-module.exports = { painelPrincipal };
+module.exports = {
+  painelPrincipal
+};

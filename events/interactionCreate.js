@@ -6,10 +6,9 @@ const {
   EmbedBuilder
 } = require('discord.js');
 
-const { painelPrincipal } = require('../ui/panels/painelPrincipal');
+const { criarPainelPrincipal } = require('../commands/sistema/painel');
 const { painelCarros } = require('../ui/panels/painelCarros');
 const { painelTecnicos } = require('../ui/panels/painelTecnicos');
-const { painelFinanceiro } = require('../ui/panels/painelFinanceiro');
 const { painelRelatorios } = require('../ui/panels/painelRelatorios');
 const { painelSistema } = require('../ui/panels/painelSistema');
 
@@ -25,11 +24,7 @@ module.exports = {
     try {
       if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
-
-        if (!command) {
-          await interaction.deferReply({ ephemeral: true });
-          return await interaction.editReply('❌ Comando não encontrado.');
-        }
+        if (!command) return;
 
         return await command.execute(interaction, client);
       }
@@ -37,9 +32,31 @@ module.exports = {
       if (interaction.isButton()) {
         const id = interaction.customId;
 
+        if (id === 'painel_veiculos' || id === 'painel_carros') {
+          return await painelCarros(interaction);
+        }
+
         if (id === 'painel_tecnicos') {
-          await interaction.deferReply({ ephemeral: true });
           return await painelTecnicos(interaction);
+        }
+
+        if (id === 'painel_relatorios') {
+          return await painelRelatorios(interaction);
+        }
+
+        if (id === 'painel_config' || id === 'painel_sistema') {
+          return await painelSistema(interaction);
+        }
+
+        if (id === 'voltar_principal') {
+          return await interaction.update(criarPainelPrincipal());
+        }
+
+        if (id === 'painel_fotos') {
+          return await interaction.reply({
+            content: '📸 Módulo de fotos em desenvolvimento.',
+            ephemeral: true
+          });
         }
 
         if (id === 'tecnico_cadastrar') {
@@ -82,12 +99,13 @@ module.exports = {
         }
 
         if (id === 'tecnico_listar') {
-          await interaction.deferReply({ ephemeral: true });
-
           const tecnicos = listarTecnicos();
 
           if (!tecnicos.length) {
-            return await interaction.editReply('📋 Nenhum técnico cadastrado ainda.');
+            return await interaction.reply({
+              content: '📋 Nenhum técnico cadastrado ainda.',
+              ephemeral: true
+            });
           }
 
           const lista = tecnicos
@@ -111,66 +129,33 @@ module.exports = {
             .setDescription(lista)
             .setFooter({ text: 'PDR Manager • Técnicos' });
 
-          return await interaction.editReply({
-            embeds: [embed]
+          return await interaction.reply({
+            embeds: [embed],
+            ephemeral: true
           });
         }
 
-        if (id === 'painel_carros' || id === 'painel_veiculos') {
-          await interaction.deferReply({ ephemeral: true });
-          return await painelCarros(interaction);
-        }
-
-        if (id === 'painel_financeiro') {
-          await interaction.deferReply({ ephemeral: true });
-          return await painelFinanceiro(interaction);
-        }
-
-        if (id === 'painel_relatorios') {
-          await interaction.deferReply({ ephemeral: true });
-          return await painelRelatorios(interaction);
-        }
-
-        if (id === 'painel_sistema' || id === 'painel_config') {
-          await interaction.deferReply({ ephemeral: true });
-          return await painelSistema(interaction);
-        }
-
-        if (id === 'voltar_principal') {
-          await interaction.deferReply({ ephemeral: true });
-          return await painelPrincipal(interaction);
-        }
-
-        if (id === 'painel_fotos') {
-          await interaction.deferReply({ ephemeral: true });
-          return await interaction.editReply('📸 Módulo de fotos em desenvolvimento.');
-        }
-
-        if (id === 'painel_ajuda') {
-          await interaction.deferReply({ ephemeral: true });
-          return await interaction.editReply('📖 Central de ajuda em desenvolvimento.');
-        }
-
-        await interaction.deferReply({ ephemeral: true });
-        return await interaction.editReply(`🚧 Botão recebido: ${id}`);
+        return await interaction.reply({
+          content: `🚧 Botão ainda não configurado: ${id}`,
+          ephemeral: true
+        });
       }
 
       if (interaction.isModalSubmit()) {
         if (interaction.customId === 'modal_cadastrar_tecnico') {
-          await interaction.deferReply({ ephemeral: true });
-
           const nome = interaction.fields.getTextInputValue('nome');
           const discordId = interaction.fields.getTextInputValue('discordId');
           const telefone = interaction.fields.getTextInputValue('telefone') || 'Não informado';
           const cargo = interaction.fields.getTextInputValue('cargo');
 
-          const cargosPermitidos = ['administrador', 'tecnico', 'técnico', 'visualizador'];
           const cargoNormalizado = cargo.trim().toLowerCase();
+          const cargosPermitidos = ['administrador', 'tecnico', 'técnico', 'visualizador'];
 
           if (!cargosPermitidos.includes(cargoNormalizado)) {
-            return await interaction.editReply(
-              '❌ Cargo inválido. Use: Administrador, Técnico ou Visualizador.'
-            );
+            return await interaction.reply({
+              content: '❌ Cargo inválido. Use: Administrador, Técnico ou Visualizador.',
+              ephemeral: true
+            });
           }
 
           const cargoFinal =
@@ -200,16 +185,27 @@ module.exports = {
                 '',
                 'O técnico foi salvo no banco de dados.'
               ].join('\n')
-            )
-            .setFooter({ text: 'PDR Manager • Cadastro de técnicos' });
+            );
 
-          return await interaction.editReply({
-            embeds: [embed]
+          return await interaction.reply({
+            embeds: [embed],
+            ephemeral: true
           });
         }
       }
-    } catch (error) {
+        } catch (error) {
       console.error('❌ Erro na interação:', error);
+
+      const respostaErro = {
+        content: '❌ Ocorreu um erro ao executar esta ação.',
+        ephemeral: true
+      };
+
+      if (interaction.deferred || interaction.replied) {
+        return await interaction.followUp(respostaErro).catch(() => {});
+      }
+
+      return await interaction.reply(respostaErro).catch(() => {});
     }
   }
 };
