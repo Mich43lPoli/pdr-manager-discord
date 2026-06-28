@@ -1,34 +1,50 @@
 const fs = require('fs');
 const path = require('path');
 
-const databasePath = path.join(__dirname, '../../database/database.json');
+const databaseDir = path.join(__dirname, '../../database');
+const databasePath = path.join(databaseDir, 'database.json');
 
-function readDatabase() {
-  if (!fs.existsSync(databasePath)) {
-    const initialData = {
-      empresa: {
-        nome: 'PDR Manager',
-        versao: '0.3.0'
-      },
-      tecnicos: [],
-      carros: [],
-      pagamentos: [],
-      logs: []
-    };
+const initialData = {
+  empresa: {
+    nome: 'PDR Manager',
+    versao: '0.3.0'
+  },
+  tecnicos: [],
+  carros: [],
+  pagamentos: [],
+  logs: []
+};
 
-    fs.writeFileSync(databasePath, JSON.stringify(initialData, null, 2));
+function garantirDatabase() {
+  if (!fs.existsSync(databaseDir)) {
+    fs.mkdirSync(databaseDir, { recursive: true });
   }
 
+  if (!fs.existsSync(databasePath)) {
+    fs.writeFileSync(databasePath, JSON.stringify(initialData, null, 2));
+  }
+}
+
+function readDatabase() {
+  garantirDatabase();
+
   const data = fs.readFileSync(databasePath, 'utf8');
+
+  if (!data.trim()) {
+    writeDatabase(initialData);
+    return initialData;
+  }
+
   return JSON.parse(data);
 }
 
 function writeDatabase(data) {
+  garantirDatabase();
   fs.writeFileSync(databasePath, JSON.stringify(data, null, 2));
 }
 
 function gerarId(prefixo, lista) {
-  const numero = lista.length + 1;
+  const numero = Array.isArray(lista) ? lista.length + 1 : 1;
   return `${prefixo}-${String(numero).padStart(4, '0')}`;
 }
 
