@@ -73,17 +73,10 @@ async function painelPrincipal(interaction) {
       .setStyle(ButtonStyle.Secondary)
   );
 
-  if (interaction.isButton()) {
-    await interaction.update({
-      embeds: [embed],
-      components: [row1, row2]
-    });
-    return;
-  }
-
-  await interaction.reply({
+  return await interaction.reply({
     embeds: [embed],
-    components: [row1, row2]
+    components: [row1, row2],
+    ephemeral: true
   });
 }
 

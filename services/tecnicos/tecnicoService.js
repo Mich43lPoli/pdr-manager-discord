@@ -1,15 +1,20 @@
-const { readDatabase, writeDatabase, gerarId } = require('../sistema/databaseService');
+const { readDatabase, writeDatabase, gerarId } = require("../sistema/databaseService");
 
-function cadastrarTecnico({ nome, telefone, documento }) {
+function cadastrarTecnico({ nome, discordId, telefone, cargo }) {
   const db = readDatabase();
 
+  if (!db.tecnicos) {
+    db.tecnicos = [];
+  }
+
   const tecnico = {
-    id: gerarId('TEC', db.tecnicos),
+    id: gerarId("TEC", db.tecnicos),
     nome,
+    discordId,
     telefone,
-    documento,
+    cargo,
     ativo: true,
-    criadoEm: new Date().toISOString()
+    criadoEm: new Date().toISOString(),
   };
 
   db.tecnicos.push(tecnico);
@@ -20,10 +25,15 @@ function cadastrarTecnico({ nome, telefone, documento }) {
 
 function listarTecnicos() {
   const db = readDatabase();
+
+  if (!db.tecnicos) {
+    return [];
+  }
+
   return db.tecnicos;
 }
 
 module.exports = {
   cadastrarTecnico,
-  listarTecnicos
+  listarTecnicos,
 };
