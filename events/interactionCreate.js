@@ -17,6 +17,19 @@ const {
   listarTecnicos
 } = require('../services/tecnicos/tecnicoService');
 
+const { isOwner } = require('../utils/permissoes');
+
+function limparDiscordId(valor) {
+  return valor.replace(/[<@!>]/g, '').trim();
+}
+
+function negarAcesso(interaction) {
+  return interaction.reply({
+    content: '❌ Você não tem permissão para usar esta função.',
+    ephemeral: true
+  });
+}
+
 module.exports = {
   name: 'interactionCreate',
 
@@ -60,6 +73,8 @@ module.exports = {
         }
 
         if (id === 'tecnico_cadastrar') {
+          if (!isOwner(interaction)) return await negarAcesso(interaction);
+
           const modal = new ModalBuilder()
             .setCustomId('modal_cadastrar_tecnico')
             .setTitle('Cadastrar Técnico');
@@ -72,7 +87,8 @@ module.exports = {
 
           const discordId = new TextInputBuilder()
             .setCustomId('discordId')
-            .setLabel('Discord ID')
+            .setLabel('Mencione o técnico ou cole o ID')
+            .setPlaceholder('@usuario ou 123456789')
             .setStyle(TextInputStyle.Short)
             .setRequired(true);
 
@@ -99,6 +115,8 @@ module.exports = {
         }
 
         if (id === 'tecnico_listar') {
+          if (!isOwner(interaction)) return await negarAcesso(interaction);
+
           const tecnicos = listarTecnicos();
 
           if (!tecnicos.length) {
@@ -143,13 +161,16 @@ module.exports = {
 
       if (interaction.isModalSubmit()) {
         if (interaction.customId === 'modal_cadastrar_tecnico') {
+          if (!isOwner(interaction)) return await negarAcesso(interaction);
+
           const nome = interaction.fields.getTextInputValue('nome');
-          const discordId = interaction.fields.getTextInputValue('discordId');
+          const discordIdBruto = interaction.fields.getTextInputValue('discordId');
+          const discordId = limparDiscordId(discordIdBruto);
           const telefone = interaction.fields.getTextInputValue('telefone') || 'Não informado';
           const cargo = interaction.fields.getTextInputValue('cargo');
 
           const cargoNormalizado = cargo.trim().toLowerCase();
-          const cargosPermitidos = ['administrador', 'tecnico', 'técnico', 'visualizador'];
+          const cargosPermitidos = ['administrador', 'admin', 'adm', 'tecnico', 'técnico', 'visualizador'];
 
           if (!cargosPermitidos.includes(cargoNormalizado)) {
             return await interaction.reply({
@@ -159,7 +180,7 @@ module.exports = {
           }
 
           const cargoFinal =
-            cargoNormalizado === 'administrador'
+            ['administrador', 'admin', 'adm'].includes(cargoNormalizado)
               ? 'Administrador'
               : cargoNormalizado === 'visualizador'
                 ? 'Visualizador'
@@ -179,6 +200,7 @@ module.exports = {
               [
                 `**ID:** ${tecnico.id}`,
                 `**Nome:** ${tecnico.nome}`,
+                `**Discord:** <@${tecnico.discordId}>`,
                 `**Discord ID:** ${tecnico.discordId}`,
                 `**Telefone:** ${tecnico.telefone}`,
                 `**Cargo:** ${tecnico.cargo}`,
@@ -193,7 +215,7 @@ module.exports = {
           });
         }
       }
-        } catch (error) {
+    } catch (error) {
       console.error('❌ Erro na interação:', error);
 
       const respostaErro = {
